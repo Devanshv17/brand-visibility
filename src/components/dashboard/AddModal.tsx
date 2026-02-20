@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Persona, MonthlyVolume } from '@/types/rufus';
-import { mockTopics, personas } from '@/data/mockData';
+import { MonthlyVolume } from '@/types/rufus';
+import { useTopics } from '@/hooks/useTopics';
+import { usePersonas, useAddPersona } from '@/hooks/usePersonas';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -19,8 +22,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronDown, Plus, Sparkles } from 'lucide-react';
+import { ChevronDown, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddModalProps {
   open: boolean;
@@ -31,36 +35,72 @@ interface AddModalProps {
 const volumeBuckets: MonthlyVolume[] = ['5K+', '2K+', '1.2K+', '<1K'];
 
 export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
+  const { personas } = usePersonas();
+  const { topics } = useTopics();
+  const addPersonaMutation = useAddPersona();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [selectedPersona, setSelectedPersona] = useState<string>('');
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const [newPersona, setNewPersona] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [showNewPersona, setShowNewPersona] = useState(false);
   const [showNewTopic, setShowNewTopic] = useState(false);
-  const [customPersonas, setCustomPersonas] = useState<string[]>([]);
   const [customTopics, setCustomTopics] = useState<{ id: string; name: string }[]>([]);
   const [generatedPrompts, setGeneratedPrompts] = useState<{ text: string; selected: boolean }[]>([]);
   const [step, setStep] = useState<'configure' | 'preview'>('configure');
+  const [saving, setSaving] = useState(false);
 
-  const allPersonas = [...personas, ...customPersonas];
-  const allTopics = [...mockTopics, ...customTopics];
+  const allTopics = [...topics, ...customTopics];
 
-  const handleAddPersona = () => {
+  const handleAddPersona = async () => {
     if (newPersona.trim()) {
-      setCustomPersonas((prev) => [...prev, newPersona.trim()]);
-      setSelectedPersona(newPersona.trim());
-      setNewPersona('');
-      setShowNewPersona(false);
+      try {
+        await addPersonaMutation.mutateAsync(newPersona.trim());
+        setSelectedPersona(newPersona.trim());
+        setNewPersona('');
+        setShowNewPersona(false);
+        toast({ title: 'Persona added', description: `"${newPersona.trim()}" saved to database.` });
+      } catch (err: unknown) {
+        console.error('Failed to add persona:', err);
+        // Fallback: add locally
+        setSelectedPersona(newPersona.trim());
+        setNewPersona('');
+        setShowNewPersona(false);
+        toast({ title: 'Persona added locally', description: 'Could not save to database. Added locally.', variant: 'destructive' });
+      }
     }
   };
 
-  const handleAddTopic = () => {
+  const handleAddTopic = async () => {
     if (newTopic.trim()) {
-      const id = `custom-${Date.now()}`;
-      setCustomTopics((prev) => [...prev, { id, name: newTopic.trim() }]);
-      setSelectedTopicIds((prev) => [...prev, id]);
-      setNewTopic('');
-      setShowNewTopic(false);
+      try {
+        const slug = newTopic.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const { data, error } = await supabase
+          .from('categories')
+          .insert({ name: newTopic.trim(), slug })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const id = data?.id || `custom-${Date.now()}`;
+        setCustomTopics((prev) => [...prev, { id, name: newTopic.trim() }]);
+        setSelectedTopicIds((prev) => [...prev, id]);
+        setNewTopic('');
+        setShowNewTopic(false);
+        queryClient.invalidateQueries({ queryKey: ['topics'] });
+        toast({ title: 'Topic added', description: `"${newTopic.trim()}" saved to database.` });
+      } catch (err) {
+        console.error('Failed to add topic:', err);
+        const id = `custom-${Date.now()}`;
+        setCustomTopics((prev) => [...prev, { id, name: newTopic.trim() }]);
+        setSelectedTopicIds((prev) => [...prev, id]);
+        setNewTopic('');
+        setShowNewTopic(false);
+        toast({ title: 'Topic added locally', description: 'Could not save to database. Added locally.', variant: 'destructive' });
+      }
     }
   };
 
@@ -71,7 +111,7 @@ export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
   };
 
   const handleGenerate = () => {
-    // Mock generated prompts
+    // Mock generated prompts — in production this would call an AI API
     const mockGenerated = [
       { text: `What is the best product for ${selectedPersona || 'customers'}?`, selected: true },
       { text: `How does this compare to competitors in ${allTopics.find(t => selectedTopicIds.includes(t.id))?.name || 'this category'}?`, selected: true },
@@ -82,10 +122,39 @@ export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
     setStep('preview');
   };
 
-  const handleSave = () => {
-    // In a real app, save to state/backend
-    onOpenChange(false);
-    resetState();
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const selectedPrompts = generatedPrompts.filter((p) => p.selected);
+
+      if (selectedPrompts.length > 0) {
+        // Insert questions into Supabase
+        const rows = selectedPrompts.map((p) => ({
+          text: p.text,
+          priority: 'medium',
+          commerce_stage_primary: 'discovery',
+          metadata: { persona: selectedPersona },
+        }));
+
+        const { error } = await supabase.from('questions').insert(rows);
+
+        if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ['prompts'] });
+        toast({ title: 'Prompts saved', description: `${selectedPrompts.length} prompts saved to database.` });
+      }
+
+      onOpenChange(false);
+      resetState();
+    } catch (err) {
+      console.error('Failed to save prompts:', err);
+      toast({ title: 'Error', description: 'Could not save prompts to database.', variant: 'destructive' });
+      // Still close and reset
+      onOpenChange(false);
+      resetState();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetState = () => {
@@ -124,7 +193,7 @@ export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
                       <SelectValue placeholder="Select persona" />
                     </SelectTrigger>
                     <SelectContent>
-                      {allPersonas.map((p) => (
+                      {personas.map((p) => (
                         <SelectItem key={p} value={p}>{p}</SelectItem>
                       ))}
                     </SelectContent>
@@ -141,7 +210,9 @@ export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
                     onChange={(e) => setNewPersona(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddPersona()}
                   />
-                  <Button size="sm" onClick={handleAddPersona}>Add</Button>
+                  <Button size="sm" onClick={handleAddPersona} disabled={addPersonaMutation.isPending}>
+                    {addPersonaMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => setShowNewPersona(false)}>Cancel</Button>
                 </div>
               )}
@@ -236,7 +307,8 @@ export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
               <Button variant="outline" onClick={() => setStep('configure')} className="flex-1">
                 Back
               </Button>
-              <Button onClick={handleSave} className="flex-1">
+              <Button onClick={handleSave} className="flex-1" disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Save {generatedPrompts.filter((p) => p.selected).length} Prompts
               </Button>
             </div>

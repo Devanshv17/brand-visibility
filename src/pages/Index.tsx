@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Platform } from '@/types/rufus';
-import { mockPrompts, mockRollupMetrics, brandName, topCompetitors, topCitationSources } from '@/data/mockData';
-import { MetricCard } from '@/components/dashboard/MetricCard';
+import { brandName } from '@/data/mockData';
+import { useDashboardMetrics } from '@/hooks/useDashboard';
+import { usePrompts } from '@/hooks/usePrompts';
 import { PromptRow } from '@/components/dashboard/PromptRow';
 import { CompetitorCard } from '@/components/dashboard/CompetitorCard';
 import { CitationSourceCard } from '@/components/dashboard/CitationSourceCard';
@@ -17,19 +18,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Eye, BarChart3, LayoutDashboard, MessageSquare, FolderOpen, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Eye, BarChart3, LayoutDashboard, MessageSquare, FolderOpen, Plus, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 
 const Index = () => {
   const [platform, setPlatform] = useState<Platform>('All');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addMode, setAddMode] = useState<'topics' | 'prompts'>('prompts');
 
+  // Supabase-backed hooks (fallback to mock data)
+  const { metrics, competitors, citationSources, isLoading: dashLoading } = useDashboardMetrics();
+  const { prompts, isLoading: promptsLoading } = usePrompts();
+
   const openAdd = (mode: 'topics' | 'prompts') => {
     setAddMode(mode);
     setAddModalOpen(true);
   };
 
-  const trendDelta = mockRollupMetrics.trendDelta;
+  const trendDelta = metrics.trendDelta;
+
+  if (dashLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,7 +118,7 @@ const Index = () => {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold tracking-tight text-foreground">
-                      {mockRollupMetrics.overallVisibilityScore}
+                      {metrics.overallVisibilityScore}
                     </span>
                     <span className="text-lg text-muted-foreground">/100</span>
                     <div className={`flex items-center gap-1 ml-2 text-sm font-medium ${trendDelta >= 0 ? 'text-brand-win' : 'text-competitor-win'}`}>
@@ -113,13 +129,13 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground mt-1">Priority-weighted across all prompts</p>
                 </div>
               </div>
-              <VisibilityTrendChart data={mockRollupMetrics.visibilityTrend} />
+              <VisibilityTrendChart data={metrics.visibilityTrend} />
             </div>
 
             {/* Competitors & Citations */}
             <section className="grid gap-6 md:grid-cols-2">
-              <CompetitorCard competitors={topCompetitors} />
-              <CitationSourceCard sources={topCitationSources} />
+              <CompetitorCard competitors={competitors} />
+              <CitationSourceCard sources={citationSources} />
             </section>
           </TabsContent>
 
@@ -134,16 +150,22 @@ const Index = () => {
               <h2 className="text-lg font-semibold text-foreground">
                 Prompt Library
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({mockPrompts.length} prompts)
+                  ({prompts.length} prompts)
                 </span>
               </h2>
             </div>
 
-            <div className="space-y-3">
-              {mockPrompts.map((prompt, index) => (
-                <PromptRow key={prompt.id} prompt={prompt} index={index} />
-              ))}
-            </div>
+            {promptsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {prompts.map((prompt, index) => (
+                  <PromptRow key={prompt.id} prompt={prompt} index={index} />
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>

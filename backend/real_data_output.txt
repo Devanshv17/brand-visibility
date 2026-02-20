@@ -1,0 +1,75 @@
+﻿Loading scraper results from archive...
+Loaded 2784 results from 34 files
+
+Unique questions: 166
+Topics: ['Multi_Dog_Household', 'New_Dog_Parent', 'Picky_Eater']
+
+Target brand (PEDIGREE) mentioned in 485 answers
+Top competitors: [('Purina', 1094), ('Blue Buffalo', 922), ("Hill's", 743), ('Royal Canin', 384), ('CESAR', 332), ('IAMS', 298)]
+Overall Visibility Score: 21/100
+
+============================================================
+TYPESCRIPT OUTPUT (paste into mockData.ts)
+============================================================
+
+export const brandName = 'Pedigree';
+
+export const personas: Persona[] = ["Busy New Dog Parent", "Late-Night Quick Dinner", "Lunch at Work", "Multi-Dog Household", "Picky-Eater Dog Parent"];
+
+export const mockTopics: Topic[] = [
+  { id: 't1', name: 'Multi-Dog Household', promptIds: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] },
+  { id: 't2', name: 'New Dog Parent', promptIds: ["136", "137", "138", "139", "140", "141", "142", "143", "144", "145"] },
+  { id: 't3', name: 'Picky Eater', promptIds: ["155", "156", "157", "158", "159", "160", "161", "162", "163", "164"] },
+];
+
+export const topCompetitors = [
+  { name: 'Purina', mentions: 1094, percentage: 18 },
+  { name: 'Blue Buffalo', mentions: 922, percentage: 15 },
+  { name: 'Hill's', mentions: 743, percentage: 12 },
+  { name: 'Royal Canin', mentions: 384, percentage: 6 },
+  { name: 'CESAR', mentions: 332, percentage: 6 },
+  { name: 'IAMS', mentions: 298, percentage: 5 },
+];
+
+export const topCitationSources = [
+  { name: 'Product Listings (PDP)', mentions: 2029, percentage: 30 },
+  { name: 'AI Answer Content', mentions: 2385, percentage: 35 },
+  { name: 'Follow-up Questions', mentions: 2335, percentage: 35 },
+];
+
+// Overall Visibility Score: 21
+// Coverage Percentage: 21.1
+// Total questions: 166
+// Total scraper results: 2784
+
+// By Journey Stage:
+//   Discovery: avg=21, total=164, above50pct=20
+//   Conversion: avg=70, total=2, above50pct=100
+
+// By Priority:
+//   High: avg=21, total=161, above50pct=21
+//   Medium: avg=12, total=5, above50pct=20
+
+// Coverage: covered=35, partial=41, notCovered=90
+
+// === Sample Prompts ===
+//   [1] vis=100 brand_wins | I have a multi-dog household and one of my dogs has bad breathùcan you recommend...
+//   [2] vis=83 brand_wins | I want a noticeable improvement in my dogÆs breathùcan you recommend a breath-bu...
+//   [3] vis=83 brand_wins | My dog wonÆt tolerate brushingùwhat would you recommend I start with for bad bre...
+//   [4] vis=89 brand_wins | Can you recommend a dog breath treat thatÆs safe for daily use, and explain when...
+//   [5] vis=83 brand_wins | If you recommend a daily dog breath treat for a multi-dog household, whatÆs the ...
+//   [6] vis=100 brand_wins | I want something that helps with breath and teethùwhat would you recommend: dog ...
+//   [7] vis=0 competitor_wins | I have multiple dogs and I prefer grain-freeùcan you recommend fresh breath for ...
+//   [8] vis=56 brand_wins | IÆm deciding what to buyùdo breath busters for dogs work quickly, and which opti...
+//   [9] vis=72 brand_wins | IÆm trying to choose a dog breath freshenerùcan you recommend options based on t...
+//   [10] vis=25 competitor_wins | My dog is picky about smellsùcan you recommend breath treats that donÆt smell to...
+//   [11] vis=39 competitor_wins | IÆm buying for an older dogùcan you recommend dog breath treats that are easy to...
+//   [12] vis=94 brand_wins | I have a small dogùcan you recommend dog breath treats that are sized for small ...
+//   [13] vis=83 brand_wins | IÆm comparing productsùcan you recommend breath busters for dogs and explain wha...
+//   [14] vis=100 brand_wins | I want fresh breath for dogs but my dog hates brushingùcan you recommend breath ...
+//   [15] vis=28 competitor_wins | My dogÆs breath can get really strongùcan you recommend breath treats that work ...
+//   [16] vis=0 no_clear_winner | My dog gulps treats fastùcan you recommend dog breath treats that still work if ...
+//   [17] vis=35 competitor_wins | IÆm sensitive to smellsùcan you recommend dog breath treats that wonÆt leave a s...
+//   [18] vis=0 competitor_wins | My dog prefers softer treatsùcan you recommend dog breath treats that are more s...
+//   [19] vis=0 competitor_wins | My dog has a sensitive stomachùcan you recommend dog breath treats that are usua...
+//   [20] vis=0 competitor_wins | I have a multi-dog householdùcan you recommend a wet dog food thatÆs a safe firs...

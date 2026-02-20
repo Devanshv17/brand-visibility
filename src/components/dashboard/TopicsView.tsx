@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { mockPrompts, mockTopics } from '@/data/mockData';
+import { useTopics } from '@/hooks/useTopics';
+import { usePrompts } from '@/hooks/usePrompts';
 import { Platform, Topic } from '@/types/rufus';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, ArrowUpDown, ChevronRight, X } from 'lucide-react';
+import { Search, ArrowUpDown, ChevronRight, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Sheet,
@@ -19,24 +20,27 @@ interface TopicsViewProps {
 type SortField = 'volume' | 'visibility';
 
 export function TopicsView({ platform }: TopicsViewProps) {
+  const { topics, isLoading: topicsLoading } = useTopics();
+  const { prompts, isLoading: promptsLoading } = usePrompts();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('volume');
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
 
   const topicStats = useMemo(() => {
-    return mockTopics.map((topic) => {
-      const prompts = mockPrompts.filter((p) => topic.promptIds.includes(p.id));
-      const totalVolume = prompts.reduce((sum, p) => {
+    return topics.map((topic) => {
+      const topicPrompts = prompts.filter((p) => topic.promptIds.includes(p.id));
+      const totalVolume = topicPrompts.reduce((sum, p) => {
         const vol = p.monthlyVolume === '5K+' ? 5000 : p.monthlyVolume === '2K+' ? 2000 : p.monthlyVolume === '1.2K+' ? 1200 : 500;
         return sum + vol;
       }, 0);
-      const avgVisibility = prompts.length > 0
-        ? Math.round(prompts.reduce((sum, p) => sum + p.visibilityScore, 0) / prompts.length)
+      const avgVisibility = topicPrompts.length > 0
+        ? Math.round(topicPrompts.reduce((sum, p) => sum + p.visibilityScore, 0) / topicPrompts.length)
         : 0;
-      return { ...topic, totalVolume, avgVisibility, promptCount: prompts.length };
+      return { ...topic, totalVolume, avgVisibility, promptCount: topicPrompts.length };
     });
-  }, []);
+  }, [topics, prompts]);
 
   const filtered = useMemo(() => {
     let result = topicStats;
@@ -52,14 +56,22 @@ export function TopicsView({ platform }: TopicsViewProps) {
 
   const selectedTopicPrompts = useMemo(() => {
     if (!selectedTopic) return [];
-    return mockPrompts.filter((p) => selectedTopic.promptIds.includes(p.id));
-  }, [selectedTopic]);
+    return prompts.filter((p) => selectedTopic.promptIds.includes(p.id));
+  }, [selectedTopic, prompts]);
 
   const formatVolume = (vol: number) => {
     if (vol >= 5000) return `${(vol / 1000).toFixed(0)}K+`;
     if (vol >= 1000) return `${(vol / 1000).toFixed(1)}K+`;
     return `<1K`;
   };
+
+  if (topicsLoading || promptsLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
