@@ -5,7 +5,10 @@ export type VisibilityOutcome = 'brand_wins' | 'competitor_wins' | 'no_clear_win
 export type CoverageStatus = 'Covered' | 'Not Covered' | 'Partially Covered';
 export type StabilityIndicator = 'Stable' | 'Volatile';
 export type SurfaceType = 'PDP' | 'Brand Store' | 'Q&A' | 'Reviews';
-export type MonthlyVolume = '5K+' | '2K+' | '1.2K+' | '<1K';
+/** Numeric estimated monthly AI search volume */
+export type MonthlyVolume = number;
+/** Display-only bucket labels (legacy) */
+export type MonthlyVolumeBucket = '5K+' | '2K+' | '1.2K+' | '<1K';
 export type Platform = 'All' | 'Rufus' | 'ChatGPT' | 'Perplexity';
 
 // Supports future extensibility for other assistants

@@ -28,8 +28,10 @@ const outcomeConfig: Record<VisibilityOutcome, { label: string; className: strin
 };
 
 export function VisibilityBadge({ outcome, score, competitor, size = 'md' }: VisibilityBadgeProps) {
-  const config = outcomeConfig[outcome];
+  // Safe fallback if outcome is undefined or invalid
+  const config = outcomeConfig[outcome] || outcomeConfig['no_clear_winner'];
   const Icon = config.icon;
+  const safeScore = score ?? 0;
 
   return (
     <div className="flex items-center gap-3">
@@ -37,11 +39,11 @@ export function VisibilityBadge({ outcome, score, competitor, size = 'md' }: Vis
       <div className={cn(
         'flex items-center justify-center rounded-lg font-semibold',
         size === 'sm' ? 'h-8 w-12 text-sm' : 'h-10 w-14 text-base',
-        score >= 70 ? 'bg-brand-win/10 text-brand-win' :
-        score >= 50 ? 'bg-warning/10 text-warning' :
-        'bg-competitor-win/10 text-competitor-win'
+        safeScore >= 70 ? 'bg-brand-win/10 text-brand-win' :
+          safeScore >= 50 ? 'bg-warning/10 text-warning' :
+            'bg-competitor-win/10 text-competitor-win'
       )}>
-        {score}
+        {safeScore}
       </div>
 
       {/* Outcome badge */}

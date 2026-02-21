@@ -1,15 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { mockPrompts } from '@/data/mockData';
-import { Prompt, JourneyStage, Priority, Persona, MonthlyVolume, VisibilityOutcome, CoverageStatus, StabilityIndicator, AssistantSource } from '@/types/rufus';
-
-function mapVolumeToLabel(vol: number | null): MonthlyVolume {
-    if (!vol) return '<1K';
-    if (vol >= 5000) return '5K+';
-    if (vol >= 2000) return '2K+';
-    if (vol >= 1200) return '1.2K+';
-    return '<1K';
-}
+import { Prompt, JourneyStage, Priority, Persona, VisibilityOutcome, CoverageStatus, StabilityIndicator, AssistantSource } from '@/types/rufus';
+import { estimateVolume } from '@/lib/volumeEstimator';
 
 function mapJourneyStage(stage: string | null): JourneyStage {
     if (!stage) return 'Discovery';
@@ -42,28 +35,33 @@ async function fetchPrompts(): Promise<Prompt[]> {
 
     if (!data || data.length === 0) return [];
 
-    return data.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        text: row.text as string,
-        journeyStage: mapJourneyStage(row.commerce_stage_primary as string | null),
-        priority: mapPriority(row.priority as string | null),
-        persona: ((row.metadata as Record<string, unknown>)?.persona as Persona) || 'Busy New Dog Parent',
-        monthlyVolume: mapVolumeToLabel(row.monthly_volume as number | null),
-        topicId: '',
-        visibilityScore: 0,
-        visibilityOutcome: 'no_clear_winner' as VisibilityOutcome,
-        topCompetitor: null,
-        testResults: [],
-        coverage: {
-            status: 'Not Covered' as CoverageStatus,
-            surfaces: [],
-            evidence: [],
-        },
-        lastTested: (row.created_at as string) || new Date().toISOString(),
-        testRunCount: 0,
-        stability: 'Stable' as StabilityIndicator,
-        assistantSource: 'rufus' as AssistantSource,
-    }));
+    return data.map((row: Record<string, unknown>) => {
+        const metadata = (row.metadata as Record<string, unknown>) || {};
+
+        return {
+            id: row.id as string,
+            text: row.text as string,
+            journeyStage: mapJourneyStage(row.commerce_stage_primary as string | null),
+            priority: mapPriority(row.priority as string | null),
+            persona: (metadata?.persona as Persona) || 'Busy New Dog Parent',
+            // Use DB volume if available (from keyword data), otherwise estimate from question text
+            monthlyVolume: (row.monthly_volume as number | null) ?? estimateVolume(row.text as string),
+            topicId: '',
+            visibilityScore: (metadata?.visibility_score as number) ?? 0,
+            visibilityOutcome: (metadata?.visibility_outcome as VisibilityOutcome) ?? 'no_clear_winner',
+            topCompetitor: null,
+            testResults: [],
+            coverage: {
+                status: 'Not Covered' as CoverageStatus,
+                surfaces: [],
+                evidence: [],
+            },
+            lastTested: (row.created_at as string) || new Date().toISOString(),
+            testRunCount: 0,
+            stability: 'Stable' as StabilityIndicator,
+            assistantSource: 'rufus' as AssistantSource,
+        };
+    });
 }
 
 export function usePrompts() {

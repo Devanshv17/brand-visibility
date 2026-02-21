@@ -3,30 +3,47 @@ import { supabase } from '@/lib/supabase';
 import { mockTopics } from '@/data/mockData';
 import { Topic } from '@/types/rufus';
 
-interface SupabaseTopic {
+interface SupabaseCategory {
+    id: string;
     name: string;
-    prompt_count: number;
-    avg_monthly_volume: number;
-    question_ids: string[];
+}
+
+interface SupabaseQuestionCategory {
+    category_id: string;
+    question_id: string;
 }
 
 async function fetchTopics(): Promise<Topic[]> {
-    const { data, error } = await supabase
-        .from('v_topics')
+    // 1. Fetch categories
+    const { data: categories, error: catError } = await supabase
+        .from('categories')
         .select('*');
 
-    if (error) {
-        console.warn('Could not fetch topics from Supabase:', error.message);
+    if (catError) {
+        console.warn('Could not fetch categories from Supabase:', catError.message);
         return [];
     }
 
-    if (!data || data.length === 0) return [];
+    if (!categories || categories.length === 0) return [];
 
-    // Transform Supabase rows into the Topic shape
-    return (data as SupabaseTopic[]).map((row, index) => ({
-        id: `topic-${index}`,
-        name: row.name,
-        promptIds: row.question_ids || [],
+    // 2. Fetch the question mapping
+    const { data: mappings, error: mapError } = await supabase
+        .from('question_category_map')
+        .select('category_id, question_id');
+
+    if (mapError) {
+        console.warn('Could not fetch question mappings:', mapError.message);
+    }
+
+    // 3. Map to Topic shape
+    const mappingsArray = mappings as SupabaseQuestionCategory[] || [];
+
+    return (categories as SupabaseCategory[]).map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        promptIds: mappingsArray
+            .filter(m => m.category_id === cat.id)
+            .map(m => m.question_id),
     }));
 }
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { MonthlyVolume } from '@/types/rufus';
 import { useTopics } from '@/hooks/useTopics';
 import { usePersonas, useAddPersona } from '@/hooks/usePersonas';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +31,7 @@ interface AddModalProps {
   mode: 'topics' | 'prompts';
 }
 
-const volumeBuckets: MonthlyVolume[] = ['5K+', '2K+', '1.2K+', '<1K'];
+
 
 export function AddModal({ open, onOpenChange, mode }: AddModalProps) {
   const { personas } = usePersonas();

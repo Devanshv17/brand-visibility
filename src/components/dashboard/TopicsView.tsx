@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, ArrowUpDown, ChevronRight, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatVolume } from '@/lib/volumeEstimator';
 import {
   Sheet,
   SheetContent,
@@ -31,10 +32,7 @@ export function TopicsView({ platform }: TopicsViewProps) {
   const topicStats = useMemo(() => {
     return topics.map((topic) => {
       const topicPrompts = prompts.filter((p) => topic.promptIds.includes(p.id));
-      const totalVolume = topicPrompts.reduce((sum, p) => {
-        const vol = p.monthlyVolume === '5K+' ? 5000 : p.monthlyVolume === '2K+' ? 2000 : p.monthlyVolume === '1.2K+' ? 1200 : 500;
-        return sum + vol;
-      }, 0);
+      const totalVolume = topicPrompts.reduce((sum, p) => sum + p.monthlyVolume, 0);
       const avgVisibility = topicPrompts.length > 0
         ? Math.round(topicPrompts.reduce((sum, p) => sum + p.visibilityScore, 0) / topicPrompts.length)
         : 0;
@@ -59,11 +57,7 @@ export function TopicsView({ platform }: TopicsViewProps) {
     return prompts.filter((p) => selectedTopic.promptIds.includes(p.id));
   }, [selectedTopic, prompts]);
 
-  const formatVolume = (vol: number) => {
-    if (vol >= 5000) return `${(vol / 1000).toFixed(0)}K+`;
-    if (vol >= 1000) return `${(vol / 1000).toFixed(1)}K+`;
-    return `<1K`;
-  };
+  // formatVolume is now imported from @/lib/volumeEstimator
 
   if (topicsLoading || promptsLoading) {
     return (
@@ -179,10 +173,7 @@ export function TopicsView({ platform }: TopicsViewProps) {
                     <p className="text-xs text-muted-foreground">Monthly Volume</p>
                     <p className="text-lg font-bold text-foreground">
                       {formatVolume(
-                        selectedTopicPrompts.reduce((s, p) => {
-                          const vol = p.monthlyVolume === '5K+' ? 5000 : p.monthlyVolume === '2K+' ? 2000 : p.monthlyVolume === '1.2K+' ? 1200 : 500;
-                          return s + vol;
-                        }, 0)
+                        selectedTopicPrompts.reduce((s, p) => s + p.monthlyVolume, 0)
                       )}
                     </p>
                   </div>
@@ -208,7 +199,7 @@ export function TopicsView({ platform }: TopicsViewProps) {
                         )}>
                           {prompt.visibilityScore}/100
                         </span>
-                        <span className="rounded-full bg-muted px-2 py-0.5">{prompt.monthlyVolume}/mo</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5">{formatVolume(prompt.monthlyVolume)}/mo</span>
                       </div>
                     </div>
                   ))}
